@@ -66,7 +66,7 @@ class General(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name='info')
+    @commands.command(name='info', aliases=['i'])
     async def info(self, ctx):
         user_details = spotify.me()
 
@@ -74,8 +74,8 @@ class General(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(name='next', alias='skip')
-    async def next(self, ctx):
+    @commands.command(name='skip', aliases=['next', 's'])
+    async def skip(self, ctx):
 
         # Under the hood implementation
         # headers = {
@@ -95,7 +95,7 @@ class General(commands.Cog):
 
         await ctx.send('skipped song')
 
-    @commands.command(name='previous', alias='return')
+    @commands.command(name='previous', aliases=['return', 'back', 'b'])
     async def previous(self, ctx):
         try:
             spotify.previous_track(config['spotify_device_id'])
@@ -105,7 +105,7 @@ class General(commands.Cog):
 
         await ctx.send('previous song')
 
-    @commands.command(name='play')
+    @commands.command(name='play', aliases=['p'])
     async def play(self, ctx, song_uri):
         # Valid contexts are albums, artists, playlists
         song_array = [song_uri]
@@ -119,7 +119,7 @@ class General(commands.Cog):
 
         await ctx.send("Started playing your track")
 
-    @commands.command(name='add')
+    @commands.command(name='add', aliases=['a'])
     async def add(self, ctx, song_uri):
         try:
             spotify.add_to_queue(song_uri, config['spotify_device_id'])
@@ -130,7 +130,7 @@ class General(commands.Cog):
 
         await ctx.send("Added your song to the queue!")
 
-    @commands.command(name='current')
+    @commands.command(name='current', aliases=['c'])
     async def current(self, ctx):
         try:
             current_song_info = spotify.currently_playing()
