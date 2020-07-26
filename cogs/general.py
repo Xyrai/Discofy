@@ -53,6 +53,7 @@ spotify = spotipy.Spotify(auth=token)
 # volume
 # voice to text command
 
+
 # Refresh the auth token if it is expired
 def refresh_token():
     cached_token = auth_manager.get_cached_token()
@@ -105,14 +106,18 @@ class General(commands.Cog):
 
         await ctx.send('previous song')
 
+    # Play or resume a track
     @commands.command(name='play', aliases=['p'])
-    async def play(self, ctx, song_uri):
+    async def play(self, ctx, song_uri=None):
+        if song_uri is None:
+            spotify.start_playback(config['spotify_device_id'])
+            return await ctx.send('Resuming')
+
         # Valid contexts are albums, artists, playlists
         song_array = [song_uri]
 
         try:
             spotify.start_playback(config['spotify_device_id'], uris=song_array)
-
         except:
             refresh_token()
             spotify.start_playback(config['spotify_device_id'], uris=song_uri)
@@ -123,7 +128,6 @@ class General(commands.Cog):
     async def add(self, ctx, song_uri):
         try:
             spotify.add_to_queue(song_uri, config['spotify_device_id'])
-
         except:
             refresh_token()
             spotify.add_to_queue(song_uri, config['spotify_device_id'])
@@ -141,6 +145,26 @@ class General(commands.Cog):
 
         current_song_name = current_song_info['item']['name']
         await ctx.send(f'Now playing: {current_song_name}')
+
+    @commands.command(name='volume', aliases=['v'])
+    async def volume(self, ctx, v_level: int):
+        try:
+            spotify.volume(v_level, config['spotify_device_id'])
+        except:
+            refresh_token()
+            spotify.volume(v_level, config['spotify_device_id'])
+
+        await ctx.send(f'Turned volume to: {v_level}')
+
+    @commands.command(name='pause', aliases=['pa'])
+    async def pause(self, ctx):
+        try:
+            spotify.pause_playback(config['spotify_device_id'])
+        except:
+            refresh_token()
+            spotify.pause_playback(config['spotify_device_id'])
+
+        await ctx.send(f'Paused song')
 
 
 def setup(bot):
