@@ -54,6 +54,29 @@ token = auth_manager.get_access_token()
 # voice to text command
 
 
+def create_song_embed(current_song_info):
+    song_name = current_song_info['item']['name']
+    song_image = current_song_info['item']['album']['images'][0]['url']
+    song_link = current_song_info['item']['album']['external_urls']['spotify']
+    song_artists = current_song_info['item']['artists']
+    song_album = current_song_info['item']['album']['name']
+    song_release_date = datetime.strptime(current_song_info['item']['album']['release_date'], '%Y-%m-%d')
+
+    artists = []
+
+    for artist in song_artists:
+        artists.append(f'[{artist["name"]}]({artist["external_urls"]["spotify"]})')
+
+    embed = discord.Embed(title=song_name,
+                          url=song_link,
+                          description=f'by {", ".join(artists)}', color=0x1eb660)
+    embed.set_thumbnail(url=song_image)
+    embed.add_field(name='Album', value=song_album, inline=False)
+    embed.add_field(name='Release Date', value=song_release_date.strftime('%d %B %Y'), inline=False)
+
+    return embed
+
+
 class General(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -74,7 +97,7 @@ class General(commands.Cog):
             embed = discord.Embed(title='Spotify details', description=user_details['display_name'])
         except spotipy.client.SpotifyException:
             self.refresh_token()
-            await self.info()
+            return await self.info(ctx)
 
         await ctx.send(embed=embed)
 
@@ -97,7 +120,7 @@ class General(commands.Cog):
             self.spotify.next_track(config['spotify_device_id'])
         except spotipy.client.SpotifyException:
             self.refresh_token()
-            await self.skip()
+            return await self.skip(ctx)
 
         # TODO: if done get currently playing track and send it to discord can be done with spotify var
 
@@ -109,9 +132,12 @@ class General(commands.Cog):
             self.spotify.previous_track(config['spotify_device_id'])
         except spotipy.client.SpotifyException:
             self.refresh_token()
-            self.spotify.previous_track(config['spotify_device_id'])
+            return await self.previous(ctx)
 
-        await ctx.send('previous song')
+        # previous_track() does not return any data, so recall the currently playing track function
+        song_details = self.spotify.currently_playing()
+
+        await ctx.send(embed=create_song_embed(song_details))
 
     # Play or resume a track
     @commands.command(name='play', aliases=['p'])
@@ -119,7 +145,7 @@ class General(commands.Cog):
         if song_uri is None:
             try:
                 self.spotify.start_playback(config['spotify_device_id'])
-                return await ctx.send('Resuming')
+                return await ctx.send('Resuming track')
             except spotipy.client.SpotifyException:
                 return
 
@@ -130,7 +156,7 @@ class General(commands.Cog):
             self.spotify.start_playback(config['spotify_device_id'], uris=song_array)
         except spotipy.client.SpotifyException:
             self.refresh_token()
-            self.spotify.start_playback(config['spotify_device_id'], uris=song_uri)
+            return await self.play(ctx, song_uri)
 
         await ctx.send("Started playing your track")
 
@@ -140,7 +166,7 @@ class General(commands.Cog):
             self.spotify.add_to_queue(song_uri, config['spotify_device_id'])
         except spotipy.client.SpotifyException:
             self.refresh_token()
-            self.spotify.add_to_queue(song_uri, config['spotify_device_id'])
+            return await self.add(ctx, song_uri)
 
         await ctx.send("Added your song to the queue!")
 
@@ -148,30 +174,15 @@ class General(commands.Cog):
     async def current(self, ctx):
         try:
             current_song_info = self.spotify.currently_playing()
+
+            # Check if there is no song playing
+            if current_song_info is None:
+                return await ctx.send('Could not find the current song/a song is not playing, try again.')
         except spotipy.client.SpotifyException:
             self.refresh_token()
-            current_song_info = self.spotify.currently_playing()
+            return await self.current(ctx)
 
-        song_name = current_song_info['item']['name']
-        song_image = current_song_info['item']['album']['images'][0]['url']
-        song_link = current_song_info['item']['album']['external_urls']['spotify']
-        song_artists = current_song_info['item']['artists']
-        song_album = current_song_info['item']['album']['name']
-        song_release_date = datetime.strptime(current_song_info['item']['album']['release_date'], '%Y-%m-%d')
-
-        artists = []
-
-        for artist in song_artists:
-            artists.append(f'[{artist["name"]}]({artist["external_urls"]["spotify"]})')
-
-        embed = discord.Embed(title=song_name,
-                              url=song_link,
-                              description=f'by {", ".join(artists)}', color=0x1eb660)
-        embed.set_thumbnail(url=song_image)
-        embed.add_field(name='Album', value=song_album, inline=False)
-        embed.add_field(name='Release Date', value=song_release_date.strftime('%d %B, %Y'), inline=False)
-
-        await ctx.send(embed=embed)
+        await ctx.send(embed=create_song_embed(current_song_info))
 
     @commands.command(name='volume', aliases=['v'])
     async def volume(self, ctx, v_level: int):
@@ -179,7 +190,7 @@ class General(commands.Cog):
             self.spotify.volume(v_level, config['spotify_device_id'])
         except spotipy.client.SpotifyException:
             self.refresh_token()
-            self.spotify.volume(v_level, config['spotify_device_id'])
+            return await self.volume(ctx, v_level)
 
         await ctx.send(f'Turned volume to: {v_level}')
 
@@ -189,22 +200,27 @@ class General(commands.Cog):
             self.spotify.pause_playback(config['spotify_device_id'])
         except spotipy.client.SpotifyException:
             self.refresh_token()
-            self.spotify.pause_playback(config['spotify_device_id'])
+            return await self.pause(ctx)
 
         await ctx.send(f'Paused song')
 
-    @commands.command(name='repeat', aliases=['loop, r'])
-    async def repeat(self, ctx, state):
+    @commands.command(name='repeat', aliases=['loop', 'r'])
+    async def repeat(self, ctx, state=None):
         # Required
         # track, context or off.
         # track will repeat the current track.
         # context will repeat the current context.
         # off will turn repeat off.
+        valid_states = ('track', 'context', 'off')
+
+        if state not in valid_states:
+            return await ctx.send('Not a valid repeat state.\nValid choices: `track`, `context`, `off`')
+
         try:
             self.spotify.repeat(state, config['spotify_device_id'])
         except spotipy.client.SpotifyException:
             self.refresh_token()
-            self.spotify.repeat(state, config['spotify_device_id'])
+            return await self.repeat(ctx, state)
 
         await ctx.send(f'Repeating song')
 
@@ -214,7 +230,7 @@ class General(commands.Cog):
             song_history = self.spotify.current_user_recently_played(limit=amount)
         except spotipy.client.SpotifyException:
             self.refresh_token()
-            song_history = self.spotify.current_user_recently_played(limit=amount)
+            return await self.history(ctx, amount)
 
         prev_song_list = []
         for track in song_history['items']:
