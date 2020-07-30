@@ -1,41 +1,30 @@
-import threading
-import queue
-import time
-
 import discord
 from discord.ext import commands
 import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
-import requests
 import spotipy.oauth2 as oauth2
 import json
 from datetime import datetime
 
-
 with open('config.json', 'r') as f:
     config = json.load(f)
 
-# TODO maybe add
 username = config['username']
 
 # Read the file and add Bearer in front of the access token automatically
 try:
-    # read input file
-    fin = open(".cache-Xyrai", "r")
-    # read file contents to string
+    fin = open('.cache-' + username, 'r')
     data = fin.read()
-    # replace all occurrences of the required string
-    if data.startswith("{\"access_token\": \"Bearer "):
+
+    # Check if Bearer is within the access token, if not then add it.
+    # This is needed to make API calls to Spotify's API.
+    if data.startswith('{\"access_token\": \"Bearer '):
         pass
     else:
-        data = data.replace("{\"access_token\": \"", "{\"access_token\": \"Bearer ")
-        # close the input file
+        data = data.replace('{\"access_token\": \"', '{\"access_token\": \"Bearer ')
         fin.close()
-        # open the input file in write mode
-        fin = open(".cache-Xyrai", "w")
-        # override the input file with the resulting data
+
+        fin = open('.cache-' + username, 'w')
         fin.write(data)
-        # close the file
         fin.close()
 except FileNotFoundError:
     pass
@@ -47,15 +36,6 @@ scope = 'streaming app-remote-control user-read-private ugc-image-upload user-re
 
 auth_manager = oauth2.SpotifyOAuth(scope=scope, username=username)
 token = auth_manager.get_access_token()
-# TODO
-# link steam acc
-# play track
-# go back to previous track
-# play playlist
-# lookup history of played songs
-# repeat
-# volume
-# voice to text command
 
 
 def create_song_embed(current_song_info):
