@@ -1,3 +1,7 @@
+import threading
+import queue
+import time
+
 import discord
 from discord.ext import commands
 import spotipy
@@ -94,17 +98,20 @@ class General(commands.Cog):
     async def info(self, ctx):
         try:
             user_details = self.spotify.me()
-            embed = discord.Embed(title='Spotify details', description=user_details['display_name'])
         except spotipy.client.SpotifyException:
             self.refresh_token()
             return await self.info(ctx)
+
+        embed = discord.Embed(title='Spotify details', description=user_details['display_name'])
 
         await ctx.send(embed=embed)
 
     @commands.command(name='skip', aliases=['next', 's'])
     async def skip(self, ctx):
+        previous_song = self.spotify.currently_playing()
 
-        # Under the hood implementation
+        # UNDER THE HOOD
+        # -------------------
         # headers = {
         #     'Accept': 'application/json',
         #     'Content-Type': 'application/json',
@@ -115,19 +122,25 @@ class General(commands.Cog):
         #
         # requests.post('https://api.spotify.com/v1/me/player/next', headers=headers, params=params)
 
-        # Easy library implementation
+        # LIBRARY IMPLEMENTATION
         try:
             self.spotify.next_track(config['spotify_device_id'])
         except spotipy.client.SpotifyException:
             self.refresh_token()
             return await self.skip(ctx)
 
-        # TODO: if done get currently playing track and send it to discord can be done with spotify var
+        # Get info about the song playing after skipping
+        song_details = self.spotify.currently_playing()
 
-        await ctx.send('skipped song')
+        while previous_song['item']['name'] == song_details['item']['name']:
+            song_details = self.spotify.currently_playing()
+
+        await ctx.send(embed=create_song_embed(song_details))
 
     @commands.command(name='previous', aliases=['return', 'back', 'b'])
     async def previous(self, ctx):
+        previous_song = self.spotify.currently_playing()
+
         try:
             self.spotify.previous_track(config['spotify_device_id'])
         except spotipy.client.SpotifyException:
@@ -137,11 +150,16 @@ class General(commands.Cog):
         # previous_track() does not return any data, so recall the currently playing track function
         song_details = self.spotify.currently_playing()
 
+        # TODO: Bad practice loop, rewrite to threading + queue of functions
+        while previous_song['item']['name'] == song_details['item']['name']:
+            song_details = self.spotify.currently_playing()
+
         await ctx.send(embed=create_song_embed(song_details))
 
     # Play or resume a track
     @commands.command(name='play', aliases=['p'])
     async def play(self, ctx, song_uri=None):
+        # If no song is given, resume playing
         if song_uri is None:
             try:
                 self.spotify.start_playback(config['spotify_device_id'])
