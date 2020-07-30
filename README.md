@@ -1,6 +1,9 @@
 # Discofy
 A Discord bot to remote control your Spotify account.
 
+# Disclaimer
+This bot is only ment for personal use, if you for some reason want to make use of it then feel free to.
+
 # Setup
 **Step 1**
 
