@@ -1,2 +1,2 @@
-# discord.py template
-A template of the API wrapper for Discord: discord.py
+# Discofy
+A remote controlling Discord bot for my Spotify account
