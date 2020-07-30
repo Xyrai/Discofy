@@ -1,10 +1,12 @@
 # Discofy
-A remote controlling Discord bot for my Spotify account
+A Discord bot to remote control your Spotify account.
 
 # Usage
 **Step 1**
-Create a config.json file with your Bot token, Spotify device id, prefix and Spotify username with the following keys:
+Create a config.json file with the following keys & values:
+
 token: Your Bot Token
+description: The description of your Bot
 spotify_device_id: Your Device ID you want to play songs on
 prefix: Your Bot Prefix
 username: Your Spotify Username
