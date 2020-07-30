@@ -61,6 +61,21 @@ def create_song_embed(current_song_info):
     return embed
 
 
+def create_account_info_embed(user_details):
+    embed = discord.Embed(title=user_details['display_name'],
+                          url=user_details['external_urls']['spotify'],
+                          color=0x1eb660)
+
+    embed.set_thumbnail(url=user_details['images'][0]['url'])
+
+    follow_count = user_details['followers']['total']
+    account_type = user_details['product']
+
+    embed.add_field(name='Account details', value=f'Followers: {follow_count}\nType: {account_type}')
+
+    return embed
+
+
 class General(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -82,9 +97,7 @@ class General(commands.Cog):
             self.refresh_token()
             return await self.info(ctx)
 
-        embed = discord.Embed(title='Spotify details', description=user_details['display_name'])
-
-        await ctx.send(embed=embed)
+        await ctx.send(embed=create_account_info_embed(user_details))
 
     @commands.command(name='skip', aliases=['next', 's'])
     async def skip(self, ctx):
