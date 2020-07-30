@@ -136,17 +136,9 @@ class General(commands.Cog):
 
         await ctx.send(embed=create_song_embed(song_details))
 
-    # Play or resume a track
+    # Play a track
     @commands.command(name='play', aliases=['p'])
-    async def play(self, ctx, song_uri=None):
-        # If no song is given, resume playing
-        if song_uri is None:
-            try:
-                self.spotify.start_playback(config['spotify_device_id'])
-                return await ctx.send('Resuming track')
-            except spotipy.client.SpotifyException:
-                return
-
+    async def play(self, ctx, song_uri):
         # Valid contexts are albums, artists, playlists
         song_array = [song_uri]
 
@@ -156,7 +148,15 @@ class General(commands.Cog):
             self.refresh_token()
             return await self.play(ctx, song_uri)
 
-        await ctx.send("Started playing your track")
+        await ctx.send(':play_pause: Started playing your track')
+
+    @commands.command(name='resume', aliases=['res'])
+    async def resume(self, ctx):
+        try:
+            self.spotify.start_playback(config['spotify_device_id'])
+            return await ctx.send('Resuming track')
+        except spotipy.client.SpotifyException:
+            return await ctx.send('Something went wrong while resuming.')
 
     @commands.command(name='add', aliases=['a'])
     async def add(self, ctx, song_uri):
@@ -200,7 +200,7 @@ class General(commands.Cog):
             self.refresh_token()
             return await self.pause(ctx)
 
-        await ctx.send(f'Paused song')
+        await ctx.send(':stop_button: Paused song')
 
     @commands.command(name='repeat', aliases=['loop', 'r'])
     async def repeat(self, ctx, state=None):
@@ -220,7 +220,15 @@ class General(commands.Cog):
             self.refresh_token()
             return await self.repeat(ctx, state)
 
-        await ctx.send(f'Repeating song')
+        # if state is valid
+        if state == valid_states[0]:
+            await ctx.send(':repeat_one: Repeating song')
+        elif state == valid_states[1]:
+            await ctx.send(':repeat: Repeating playlist')
+        elif state == valid_states[2]:
+            await ctx.send('Turned off repeat mode')
+        else:
+            await ctx.send('Something went wrong')
 
     @commands.command(name='history', aliases=['h'])
     async def history(self, ctx, amount=3):
